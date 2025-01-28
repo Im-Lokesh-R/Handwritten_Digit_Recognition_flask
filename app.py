@@ -9,7 +9,7 @@ import os
 app = Flask(__name__)
 
 # Load the pre-trained model (make sure to replace 'model.h5' with the path to your model file)
-model = keras.models.load_model('model.h5')
+model = keras.models.load_model('mnist_digit_recognition_model.h5')
 
 app.config['UPLOAD_FOLDER'] = 'uploads/'
 app.config['ALLOWED_EXTENSIONS'] = {'png', 'jpg', 'jpeg'}
