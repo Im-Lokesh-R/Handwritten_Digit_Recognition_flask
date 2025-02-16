@@ -1,4 +1,4 @@
-from flask import Flask, render_template, request, redirect, url_for
+from flask import Flask, render_template, request, redirect, url_for, send_from_directory
 from PIL import Image
 import numpy as np
 import tensorflow as tf
@@ -8,44 +8,56 @@ import os
 # Initialize Flask app
 app = Flask(__name__)
 
-# Load the pre-trained model (make sure to replace 'model.h5' with the path to your model file)
-model = keras.models.load_model('mnist_digit_recognition_model.h5')
+# Load the pre-trained model
+MODEL_PATH = 'mnist_digit_recognition_model.h5'
+if not os.path.exists(MODEL_PATH):
+    raise FileNotFoundError(f"Model file '{MODEL_PATH}' not found. Ensure it is uploaded.")
 
-app.config['UPLOAD_FOLDER'] = 'uploads/'
+model = keras.models.load_model(MODEL_PATH)
+
+# Configure upload folder
+UPLOAD_FOLDER = 'uploads'
+app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
 app.config['ALLOWED_EXTENSIONS'] = {'png', 'jpg', 'jpeg'}
+
+# Ensure upload folder exists
+if not os.path.exists(UPLOAD_FOLDER):
+    os.makedirs(UPLOAD_FOLDER)
 
 def allowed_file(filename):
     return '.' in filename and filename.rsplit('.', 1)[1].lower() in app.config['ALLOWED_EXTENSIONS']
 
+@app.route('/uploads/<filename>')
+def uploaded_file(filename):
+    return send_from_directory(app.config['UPLOAD_FOLDER'], filename)
+
 @app.route('/', methods=['GET', 'POST'])
 def index():
     if request.method == 'POST':
-        # Check if the post request has the file part
         if 'file' not in request.files:
             return redirect(request.url)
+
         file = request.files['file']
-        
-        # If no file is selected
         if file.filename == '':
             return redirect(request.url)
-        
+
         if file and allowed_file(file.filename):
-            filename = os.path.join(app.config['UPLOAD_FOLDER'], file.filename)
-            file.save(filename)
+            filepath = os.path.join(app.config['UPLOAD_FOLDER'], file.filename)
+            file.save(filepath)
 
-            # Process the image for prediction
-            img = Image.open(filename).convert('L')  # Convert to grayscale
+            # Process image
+            img = Image.open(filepath).convert('L')  # Convert to grayscale
             img = img.resize((28, 28))  # Resize to 28x28
-            img_array = np.array(img) / 255.0  # Normalize the pixel values
+            img_array = np.array(img) / 255.0  # Normalize pixel values
             img_array = np.expand_dims(img_array, axis=0)  # Add batch dimension
-            img_array = np.expand_dims(img_array, axis=-1)  # Add channel dimension (1 for grayscale)
+            img_array = np.expand_dims(img_array, axis=-1)  # Add channel dimension
 
-            # Predict the digit
+            # Predict digit
             predictions = model.predict(img_array)
-            predicted_digit = np.argmax(predictions)  # Get the class with the highest probability
+            predicted_digit = np.argmax(predictions)
 
-            # Return the result to the user
-            return render_template('index.html', prediction=predicted_digit, image_path=filename)
+            # Send result to frontend
+            return render_template('index.html', prediction=predicted_digit, image_path=url_for('uploaded_file', filename=file.filename))
 
     return render_template('index.html')
 
