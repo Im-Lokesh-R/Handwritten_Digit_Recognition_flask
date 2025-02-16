@@ -8,13 +8,6 @@ import os
 # Initialize Flask app
 app = Flask(__name__)
 
-# Load the pre-trained model
-MODEL_PATH = 'mnist_digit_recognition_model.h5'
-if not os.path.exists(MODEL_PATH):
-    raise FileNotFoundError(f"Model file '{MODEL_PATH}' not found. Ensure it is uploaded.")
-
-model = keras.models.load_model(MODEL_PATH)
-
 # Configure upload folder
 UPLOAD_FOLDER = 'uploads'
 app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
@@ -23,6 +16,13 @@ app.config['ALLOWED_EXTENSIONS'] = {'png', 'jpg', 'jpeg'}
 # Ensure upload folder exists
 if not os.path.exists(UPLOAD_FOLDER):
     os.makedirs(UPLOAD_FOLDER)
+
+# Load the pre-trained model from uploads folder
+MODEL_PATH = os.path.join(UPLOAD_FOLDER, 'mnist_digit_recognition_model.h5')
+if not os.path.exists(MODEL_PATH):
+    raise FileNotFoundError(f"Model file '{MODEL_PATH}' not found. Ensure it is uploaded inside 'uploads/' directory.")
+
+model = keras.models.load_model(MODEL_PATH)
 
 def allowed_file(filename):
     return '.' in filename and filename.rsplit('.', 1)[1].lower() in app.config['ALLOWED_EXTENSIONS']
